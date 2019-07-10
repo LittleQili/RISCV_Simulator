@@ -21,8 +21,7 @@ void memory::inimem(){
         unsigned short tmpin = 0;
         const unsigned short zero = 0;
         int old = offset;
-        std::cin.get(gap);
-        while(gap != EOF){
+        while(std::cin.get(gap)){
             switch(gap){
                 case '@':
                     std::cin >>std::hex>> changer;
@@ -58,7 +57,7 @@ void memory::inimem(){
                     ++offset;
                     break;
             }
-            std::cin.get(gap);
+            //std::cin.get(gap);
         }
 }
 
