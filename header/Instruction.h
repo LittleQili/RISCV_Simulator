@@ -20,8 +20,10 @@ enum InstT {
     UnDecoded = 80,
 };
 
-class Buffer;
-
+class Buffer_IF_ID;
+class Buffer_ID_EX;
+class Buffer_EX_MA;
+class Buffer_MA_WB;
 struct Ins_Base{
     unsigned int funct3,funct7;
     unsigned int rs2,rs1,rd;
@@ -47,39 +49,42 @@ struct Ins_Base{
         rs2 = ((instruction>>20)&0b11111);
     }
 
-    virtual void Decode(Buffer& buffer,Register& r){};
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex){};
 };
 
 struct Ins_R: Ins_Base{
     Ins_R();
     virtual ~Ins_R(){};
     virtual void Fetch(const unsigned int& inst_content);
-    virtual void Decode(Buffer& buffer,Register& r);
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex);
 };
 struct Ins_I: Ins_Base{
     Ins_I();
     virtual void Fetch(const unsigned int& inst_content);
-    virtual void Decode(Buffer& buffer,Register& r);
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex);
+
 };
 struct Ins_S: Ins_Base{
     Ins_S();
     virtual void Fetch(const unsigned int& inst_content);
-    virtual void Decode(Buffer& buffer,Register& r);
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex);
+
 };
 struct Ins_B: Ins_Base{
     Ins_B();
     virtual void Fetch(const unsigned int& inst_content);
-    virtual void Decode(Buffer& buffer,Register& r);
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex);
 };
 struct Ins_U: Ins_Base{
     Ins_U();
     virtual void Fetch(const unsigned int& inst_content);
-    virtual void Decode(Buffer& buffer,Register& r);
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex);
+
 };
 struct Ins_J: Ins_Base{
     Ins_J();
     virtual void Fetch(const unsigned int& inst_content);
-    virtual void Decode(Buffer& buffer,Register& r);
+    virtual void Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex);
 };
 
 #endif //RISCV_SIMULATOR_INSTRUCTION_H

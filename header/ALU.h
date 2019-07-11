@@ -23,9 +23,9 @@ private:
     inline unsigned int ANDer(unsigned int n1,unsigned int n2);
     inline unsigned int ORer(unsigned int n1,unsigned int n2);
 public:
-    ALU(Buffer& buffer);
-
+    ALU(Buffer_ID_EX& buffer_id_ex);
     int LOAD_STORE_offset();
+    unsigned int STOREr();
     unsigned int ARITHer();
     unsigned int LOGICer();
     unsigned int SHIFTer();

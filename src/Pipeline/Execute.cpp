@@ -3,12 +3,10 @@
 //
 
 #include "../../header/Pipeline.h"
-
-ALU::ALU(Buffer& buffer)
-:rs1_content(buffer.read_rs1_content()),rs2_content(buffer.read_rs2_content()),
-unsigned_imm(buffer.read_bp()->unsigned_imm),imm(buffer.read_bp()->imm),
-instt(buffer.read_bp()->instt)
-{};
+ALU::ALU(Buffer_ID_EX& buffer_id_ex):
+        rs1_content(buffer_id_ex.read_rs1_content()),rs2_content(buffer_id_ex.read_rs2_content()),
+        unsigned_imm(buffer_id_ex.read_unsigned_imm()),imm(buffer_id_ex.read_imm()),
+        instt(buffer_id_ex.read_instt()){};
 
 inline unsigned int ALU::ADDer(unsigned int n1,unsigned int n2){return n1 + n2;}
 
@@ -21,6 +19,9 @@ inline unsigned int ALU::ANDer(unsigned int n1,unsigned int n2){return (n1&n2);}
 inline unsigned int ALU::ORer(unsigned int n1,unsigned int n2){return (n1|n2);}
 
 int ALU::LOAD_STORE_offset(){return static_cast<int> (imm + rs1_content);}
+unsigned int ALU::STOREr(){
+    return rs2_content;
+}
 unsigned int ALU::ARITHer(){
     switch (instt){
         case ADDI:return ADDer(rs1_content,imm);
@@ -103,42 +104,47 @@ int ALU::AUIPC(){
     return static_cast<int>(unsigned_imm);
 }
 
-void Fstep_excute(Buffer& buffer){
-    ALU exe(buffer);
-    int tmptype = static_cast<int>(buffer.read_bp()->instt);
+///这个步骤中buffer_ex_ma仅有memoffset用到read操作。
+void Fstep_excute(Buffer_ID_EX& buffer_id_ex,Buffer_EX_MA& buffer_ex_ma){
+    ALU exe(buffer_id_ex);
+    buffer_ex_ma.modify_rd(buffer_id_ex.read_rd());
+    buffer_ex_ma.modify_instt(buffer_id_ex.read_instt());
+    buffer_ex_ma.modify_PC(buffer_id_ex.read_PC());
+    int tmptype = static_cast<int>(buffer_id_ex.read_instt());
     if(tmptype < 40){
         ///关于L和S的解释：
         ///L:在EX阶段仅仅计算出offset;
         ///S:计算offset，并且将rs2处理掉。
         if(tmptype < 20) {
-            buffer.modify_mem_offset(exe.LOAD_STORE_offset());///???
-            if((tmptype >= 10)&&buffer.read_mem_offset() == (int)0x30004) throw terminate();
-            //if(tmptype >= 10)buffer.modify_rs2_content(exe.STOREer());
+            buffer_ex_ma.modify_mem_offset(exe.LOAD_STORE_offset());///???
+            if(tmptype >= 10)buffer_ex_ma.modify_rd_value(exe.STOREr());
+            if((tmptype >= 10)&&buffer_ex_ma.read_mem_offset() == (int)0x30004) throw terminate();
         }
         else{
-            if(tmptype < 30)buffer.modify_rd_value(exe.ARITHer());
-            else buffer.modify_rd_value(exe.LOGICer());
+            if(tmptype < 30)buffer_ex_ma.modify_rd_value(exe.ARITHer());
+            else buffer_ex_ma.modify_rd_value(exe.LOGICer());
         }
     }else{
         if(tmptype < 60){
-            if(tmptype < 50)buffer.modify_rd_value(exe.SHIFTer());
-            else buffer.modify_rd_value(exe.COMPer());
+            if(tmptype < 50)buffer_ex_ma.modify_rd_value(exe.SHIFTer());
+            else buffer_ex_ma.modify_rd_value(exe.COMPer());
         }
         else{
-            if(tmptype < 70)buffer.jumpcommon_PC(exe.BRANCHer() - 4);
+            if(tmptype < 70)buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
             else{
                 if(tmptype == AUIPC){///AUIPC
-                    buffer.jumpcommon_PC(exe.AUIPC() - 4);
-                    buffer.modify_rd_value(static_cast<unsigned int>(buffer.read_PC()));
+                    buffer_ex_ma.jumpcommon_PC(exe.AUIPC() - 4);
+                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                 }else if(tmptype == JAL){///JAL
-                    buffer.modify_rd_value(static_cast<unsigned int>(buffer.read_PC()));
-                    buffer.jumpcommon_PC(exe.JAL() - 4);
+                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
+                    buffer_ex_ma.jumpcommon_PC(exe.JAL() - 4);
                 }else if(tmptype == JALR){///JALR
-                    buffer.modify_rd_value(static_cast<unsigned int>(buffer.read_PC()));
-                    buffer.jumpcommon_PC(exe.JALR() - buffer.read_PC());
+                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
+                    buffer_ex_ma.jumpcommon_PC(exe.JALR() - buffer_id_ex.read_PC());
                 }
             }
         }
-
     }
 }
+
+

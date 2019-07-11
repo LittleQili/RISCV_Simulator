@@ -4,17 +4,17 @@
 
 #include "../../header/Pipeline.h"
 
-void FStep_Fetch(memory *m,Register& r,Buffer& buffer){
+void FStep_Fetch(memory* m,Buffer_IF_ID& buffer_if_id){
     Ins_Base *tmpbp = nullptr;
-    unsigned int inst_content = m->get_inst(buffer.read_PC());
+    unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
 
     unsigned int op = (inst_content&0x7f);
     fetch_sw(tmpbp,op,inst_content);
-    buffer.modify_bp(tmpbp);
+    buffer_if_id.modify_bp(tmpbp);
 
-    buffer.jumpcommon_PC(4);
+    buffer_if_id.jumpcommon_PC(4);
 }
-
+///这里留住了后几个指令类型的家族分类操作。不知道后面有用否？
 void fetch_sw(Ins_Base* &bp, const unsigned int& op,const unsigned int& inst_content){
     Ins_Base* tmpd = bp;
     bp = nullptr;
@@ -127,3 +127,4 @@ void Ins_J::Fetch(const unsigned int& inst_content){
                    &0x1fffff;
     imm = (((unsigned_imm>>20) == 0b1)?(unsigned_imm|0xffe00000):(unsigned_imm));
 }
+
