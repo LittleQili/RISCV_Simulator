@@ -36,6 +36,8 @@ public:
 
     class MA_InvalidLoad{};
     class MA_InvalidSTORE{};
+
+    class Parallel_nonactive{};
 };
 
 #endif //RISCV_SIMULATOR_EXCEPTION_H
