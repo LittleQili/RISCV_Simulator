@@ -104,47 +104,4 @@ int ALU::AUIPC(){
     return static_cast<int>(unsigned_imm);
 }
 
-///这个步骤中buffer_ex_ma仅有memoffset用到read操作。
-void Fstep_excute(Buffer_ID_EX& buffer_id_ex,Buffer_EX_MA& buffer_ex_ma){
-    ALU exe(buffer_id_ex);
-    buffer_ex_ma.modify_rd(buffer_id_ex.read_rd());
-    buffer_ex_ma.modify_instt(buffer_id_ex.read_instt());
-    buffer_ex_ma.modify_PC(buffer_id_ex.read_PC());
-    int tmptype = static_cast<int>(buffer_id_ex.read_instt());
-    if(tmptype < 40){
-        ///关于L和S的解释：
-        ///L:在EX阶段仅仅计算出offset;
-        ///S:计算offset，并且将rs2处理掉。
-        if(tmptype < 20) {
-            buffer_ex_ma.modify_mem_offset(exe.LOAD_STORE_offset());///???
-            if(tmptype >= 10)buffer_ex_ma.modify_rd_value(exe.STOREr());
-            if((tmptype >= 10)&&buffer_ex_ma.read_mem_offset() == (int)0x30004) throw terminate();
-        }
-        else{
-            if(tmptype < 30)buffer_ex_ma.modify_rd_value(exe.ARITHer());
-            else buffer_ex_ma.modify_rd_value(exe.LOGICer());
-        }
-    }else{
-        if(tmptype < 60){
-            if(tmptype < 50)buffer_ex_ma.modify_rd_value(exe.SHIFTer());
-            else buffer_ex_ma.modify_rd_value(exe.COMPer());
-        }
-        else{
-            if(tmptype < 70)buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
-            else{
-                if(tmptype == AUIPC){///AUIPC
-                    buffer_ex_ma.jumpcommon_PC(exe.AUIPC() - 4);
-                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
-                }else if(tmptype == JAL){///JAL
-                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
-                    buffer_ex_ma.jumpcommon_PC(exe.JAL() - 4);
-                }else if(tmptype == JALR){///JALR
-                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
-                    buffer_ex_ma.jumpcommon_PC(exe.JALR() - buffer_id_ex.read_PC());
-                }
-            }
-        }
-    }
-}
-
 

@@ -8,10 +8,7 @@
 #include "Instruction.h"
 
 enum HazardT {
-    NON = 0,
-    DATA_family,DATA_rs1,DATA_rs2,DATA_both,
-    CONTROL,
-    BOTH_family,BOTH_rs1,BOTH_rs2,BOTH_both,
+    NON = 0,DATA,CONTROL,BOTH,
 };
 class Buffer_IF_ID{
 private:

@@ -4,11 +4,6 @@
 
 #include "../../header/Pipeline.h"
 
-void Fstep_Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex){
-    Ins_Base* bp = buffer_if_id.read_bp();
-    bp->Decode(r,buffer_if_id,buffer_id_ex);
-}
-
 void Ins_R::Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex){
     buffer_id_ex.modify_rs1_content(r.get_reg(rs1));
     buffer_id_ex.modify_rs2_content(r.get_reg(rs2));

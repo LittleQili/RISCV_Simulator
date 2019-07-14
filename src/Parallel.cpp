@@ -4,7 +4,7 @@
 
 #include "../header/Parallel.h"
 
-Parallel_Ctrler::Parallel_Ctrler():isIFlocked(false){
+Parallel_Ctrler::Parallel_Ctrler(){
     m = new memory;
     m->inimem();
     for(int i = 0;i < 5;++i) isready[i] = false;
@@ -15,13 +15,8 @@ Parallel_Ctrler::~Parallel_Ctrler(){
 
 void Parallel_Ctrler::FStep_Fetch(){
     Ins_Base *tmpbp = nullptr;
-#ifdef PC_WATCH
-    int tmppc = buffer_if_id.read_PC();
-    unsigned int inst_content = m->get_inst(tmppc);
-    std::cout << "IN FETCH. NOW the PC is: " << std::hex <<tmppc << std::endl;
-#else
+
     unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
-#endif
     unsigned int op = (inst_content&0x7f);
 
     fetch_sw(tmpbp,op,inst_content);
@@ -29,29 +24,25 @@ void Parallel_Ctrler::FStep_Fetch(){
     buffer_if_id.modify_bp(tmpbp);
 
     //判断hazard类型
-    /**这里判断的时候先判断control，因为有可能同时具备两种
-     * 判断data的时候用了短路求值的思路。之后再加两种功能的时候应该小心为上。
-     */
+    ///这里把细判的版本改成这样的粗略判断。
      InstT tmpinstt = tmpbp->instt;
+
     if(tmpinstt == Command_family){
-        if(r.isreglocked(tmpbp->rs1)){
-            if(r.isreglocked(tmpbp->rs2))buffer_if_id.modify_hazard(BOTH_both);
-            else buffer_if_id.modify_hazard(BOTH_rs1);
-        }else if(r.isreglocked(tmpbp->rs2))
-            buffer_if_id.modify_hazard(BOTH_rs2);
+        if(r.isreglocked(tmpbp->rs1)||r.isreglocked(tmpbp->rs2))
+            buffer_if_id.modify_hazard(BOTH);
         else buffer_if_id.modify_hazard(CONTROL);
     }
     if(tmpinstt == JALR){
-        if(r.isreglocked(tmpbp->rs1))buffer_if_id.modify_hazard(BOTH_rs1);
+        if(r.isreglocked(tmpbp->rs1))buffer_if_id.modify_hazard(BOTH);
         else buffer_if_id.modify_hazard(CONTROL);
     }
+
     if((tmpinstt == Store_family||op == 0b0110011)
        &&r.isreglocked(tmpbp->rs2)){
-        buffer_if_id.modify_hazard(DATA_rs2);
+        buffer_if_id.modify_hazard(DATA);
     }else if((tmpinstt != LUI&&tmpinstt != AUIPC&&tmpinstt != JAL&&tmpinstt != Command_family&&tmpinstt != JALR)
        &&r.isreglocked(tmpbp->rs1))
-        if(buffer_if_id.read_hazard() == DATA_rs2)buffer_if_id.modify_hazard(DATA_both);
-        else buffer_if_id.modify_hazard(DATA_rs1);
+        buffer_if_id.modify_hazard(DATA);
 
     //上锁
     buffer_if_id.modify_Locknext(false);
@@ -64,6 +55,7 @@ void Parallel_Ctrler::FStep_Fetch(){
     else buffer_if_id.jumpcommon_PC(tmpbp->imm);
 }
 ///这里留住了后几个指令类型的家族分类操作。不知道后面有用否？
+///repaly 2019/7/14:非常有用，减少了判断hazard类型的时间。
 void Parallel_Ctrler::fetch_sw(Ins_Base* &bp, const unsigned int& op,const unsigned int& inst_content){
     Ins_Base* tmpd = bp;
     bp = nullptr;
@@ -241,5 +233,64 @@ void Parallel_Ctrler::Fstep_WriteBack(){
     ///unlock
     r.unlock_reg(buffer_ma_wb.read_rd());
 }
+
+void Parallel_Ctrler::Run_Parallel(){
+    while(1){
+        //WB
+        if(isready[4]){
+            Fstep_WriteBack();
+            isready[4] = false;
+
+            if(!isready[3]&&!isready[2]&&!isready[1]) {
+                if (buffer_if_id.read_hazard() == BOTH) {
+                    isready[1] = true;
+                    buffer_if_id.modify_hazard(CONTROL);
+                } else if (buffer_if_id.read_hazard() == DATA) {
+                    buffer_if_id.modify_hazard(NON);
+                    isready[1] = true;
+                }
+            }
+        }
+        //MA
+        if(isready[3]){
+            Fstep_MemoryAccess();
+            isready[3] = false;
+            isready[4] = true;
+        }
+        //EX
+        if(isready[2]){
+            try {
+                Fstep_excute();
+            }
+            catch (terminate) {
+                //Fstep_WriteBack();
+                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
+                delete m;
+                return ;
+            }
+            if(buffer_id_ex.read_hazard() == CONTROL){
+                buffer_if_id.modify_PC(buffer_ex_ma.read_PC());//MUX_GREEN写到这一步里了
+                buffer_if_id.modify_hazard(NON);
+            }
+            isready[2] = false;
+            isready[3] = true;
+        }
+        //ID
+        ///这个步骤中使用了寄存器，进行上锁操作
+        if(isready[1]){
+            Fstep_Decode();
+            isready[1] = false;
+            isready[2] = true;
+        }
+        //IF
+        ///原本这里不能接触register,但是为了方便给rd上锁，所以在FStep_Fetch（）对寄存器做了上锁的操作。
+        ///该处Step_Fetch也对hazard做修改操作。
+        if(buffer_if_id.read_hazard() == NON){
+            FStep_Fetch();
+            if(buffer_if_id.read_hazard() == NON||buffer_if_id.read_hazard() == CONTROL)///confirm
+                isready[1] = true;
+        }
+    }
+};
 
 
