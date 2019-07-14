@@ -16,7 +16,13 @@ Parallel_Ctrler::~Parallel_Ctrler(){
 void Parallel_Ctrler::FStep_Fetch(){
     Ins_Base *tmpbp = nullptr;
 
+#ifdef PC_WATCH
+    int tmppc = buffer_if_id.read_PC();
+    unsigned int inst_content = m->get_inst(tmppc);
+    std::cout << "IN FETCH. NOW the PC is: " << std::hex <<tmppc << std::endl;
+#else
     unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
+#endif
     unsigned int op = (inst_content&0x7f);
 
     fetch_sw(tmpbp,op,inst_content);
@@ -24,35 +30,17 @@ void Parallel_Ctrler::FStep_Fetch(){
     buffer_if_id.modify_bp(tmpbp);
 
     //判断hazard类型
-    ///这里把细判的版本改成这样的粗略判断。
-     InstT tmpinstt = tmpbp->instt;
+    ///这里仅能判断：control
+    InstT tmpinstt = tmpbp->instt;
 
-    if(tmpinstt == Command_family){
-        if(r.isreglocked(tmpbp->rs1)||r.isreglocked(tmpbp->rs2))
-            buffer_if_id.modify_hazard(BOTH);
-        else buffer_if_id.modify_hazard(CONTROL);
-    }
-    if(tmpinstt == JALR){
-        if(r.isreglocked(tmpbp->rs1))buffer_if_id.modify_hazard(BOTH);
-        else buffer_if_id.modify_hazard(CONTROL);
-    }
+    if(tmpinstt == Command_family||tmpinstt == JALR)
+        buffer_if_id.modify_hazard(CONTROL);
 
-    if((tmpinstt == Store_family||op == 0b0110011)
-       &&r.isreglocked(tmpbp->rs2)){
-        buffer_if_id.modify_hazard(DATA);
-    }else if((tmpinstt != LUI&&tmpinstt != AUIPC&&tmpinstt != JAL&&tmpinstt != Command_family&&tmpinstt != JALR)
-       &&r.isreglocked(tmpbp->rs1))
-        buffer_if_id.modify_hazard(DATA);
-
-    //上锁
-    buffer_if_id.modify_Locknext(false);
-    if(tmpbp->instt != Command_family&&tmpbp->instt != Store_family){
-        if(tmpbp->rd != tmpbp->rs1&&tmpbp->rd != tmpbp->rs2)r.lock_reg(tmpbp->rd);
-        else buffer_if_id.modify_Locknext(true);
-    }
-
-    if(tmpinstt != JAL)buffer_if_id.jumpcommon_PC(4);
-    else buffer_if_id.jumpcommon_PC(tmpbp->imm);
+    if(tmpinstt == JAL){
+        buffer_if_id.jumpcommon_PC(tmpbp->imm);
+    }else if(tmpinstt == AUIPC){
+        buffer_if_id.jumpcommon_PC(tmpbp->unsigned_imm);
+    }else buffer_if_id.jumpcommon_PC(4);
 }
 ///这里留住了后几个指令类型的家族分类操作。不知道后面有用否？
 ///repaly 2019/7/14:非常有用，减少了判断hazard类型的时间。
@@ -126,8 +114,8 @@ void Parallel_Ctrler::Fstep_Decode(){
     Ins_Base* bp = buffer_if_id.read_bp();
     bp->Decode(r,buffer_if_id,buffer_id_ex);
     buffer_id_ex.modify_hazard(buffer_if_id.read_hazard());
-
-    if(buffer_if_id.read_Locknext())r.lock_reg(buffer_id_ex.read_rd());
+    buffer_id_ex.modify_rs1(bp->rs1);
+    buffer_id_ex.modify_rs2(bp->rs2);
 }
 ///这个步骤中buffer_ex_ma仅有memoffset用到read操作。
 void Parallel_Ctrler::Fstep_excute(){
@@ -142,16 +130,38 @@ void Parallel_Ctrler::Fstep_excute(){
         ///L:在EX阶段仅仅计算出offset;
         ///S:计算offset，并且将rs2处理掉。
         if(tmptype < 20) {
+#ifdef DEBUG_FOWARDING
+            if(tmptype >= 10)
+            std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
+                      <<" rs2_content = " << buffer_id_ex.read_rs2_content() << std::endl;
+            else
+                std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
+                           << std::endl;
+#endif
             buffer_ex_ma.modify_mem_offset(exe.LOAD_STORE_offset());///???
             if(tmptype >= 10)buffer_ex_ma.modify_rd_value(exe.STOREr());
             if((tmptype >= 10)&&buffer_ex_ma.read_mem_offset() == (int)0x30004) throw terminate();
         }
         else{
+#ifdef DEBUG_FOWARDING
+            if(tmptype >= 20&&tmptype < 23||tmptype>=30 && tmptype < 34)
+                std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
+                          << std::endl;
+            else std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
+                           <<" rs2_content = " << buffer_id_ex.read_rs2_content() << std::endl;
+#endif
             if(tmptype < 30)buffer_ex_ma.modify_rd_value(exe.ARITHer());
             else buffer_ex_ma.modify_rd_value(exe.LOGICer());
         }
     }else{
         if(tmptype < 60){
+#ifdef DEBUG_FOWARDING
+            if(tmptype >= 40&&tmptype < 44||tmptype>=50 && tmptype < 53)
+                std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
+                          << std::endl;
+            else std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
+                           <<" rs2_content = " << buffer_id_ex.read_rs2_content() << std::endl;
+#endif
             if(tmptype < 50)buffer_ex_ma.modify_rd_value(exe.SHIFTer());
             else buffer_ex_ma.modify_rd_value(exe.COMPer());
         }
@@ -159,11 +169,20 @@ void Parallel_Ctrler::Fstep_excute(){
             if(tmptype < 70)buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
             else{
                 if(tmptype == AUIPC){///AUIPC
-                    buffer_ex_ma.jumpcommon_PC(exe.AUIPC() - 4);
+#ifdef DEBUG_FOWARDING
+               std::cout << "AUIPC" << std::endl;
+#endif
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                 }else if(tmptype == JAL){///JAL
+#ifdef DEBUG_FOWARDING
+                    std::cout << "JAL" << std::endl;
+#endif
                     buffer_ex_ma.modify_rd_value(buffer_ex_ma.read_PC() - buffer_id_ex.read_imm() + 4);
                 }else if(tmptype == JALR){///JALR
+#ifdef DEBUG_FOWARDING
+                    std::cout << "JALR :rs1_content = " << buffer_id_ex.read_rs1_content()
+                              << std::endl;
+#endif
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                     buffer_ex_ma.jumpcommon_PC(exe.JALR() - buffer_id_ex.read_PC());
                 }
@@ -177,7 +196,10 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
     buffer_ma_wb.modify_rd_value(buffer_ex_ma.read_rd_value());
 
     int tmptype = static_cast<int>(buffer_ex_ma.read_instt());
-///LOAD
+
+    if(tmptype >= 20&&!(tmptype >= 60&&tmptype < 70))///
+        buffer_ex_ma.send_rd_value(buffer_id_ex);
+    ///LOAD
     if(tmptype < 10){
         unsigned int tmprd;
         switch (tmptype){
@@ -185,23 +207,28 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),1);
                 tmprd = ((tmprd>>7) == 1?(tmprd|0xffffff00):tmprd);
                 buffer_ma_wb.modify_rd_value(tmprd);
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///
                 break;
             case LH:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),2);
                 tmprd = ((tmprd>>15) == 1?(tmprd|0xffff0000):tmprd);
                 buffer_ma_wb.modify_rd_value(tmprd);
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///
                 break;
             case LW:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),4);
                 buffer_ma_wb.modify_rd_value(tmprd);
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///
                 break;
             case LBU:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),1);
                 buffer_ma_wb.modify_rd_value(tmprd&0xff);
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///
                 break;
             case LHU:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),2);
                 buffer_ma_wb.modify_rd_value(tmprd&0xffff);
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///
                 break;
             default:throw exception::MA_InvalidLoad();
         }
@@ -229,9 +256,7 @@ void Parallel_Ctrler::Fstep_WriteBack(){
 
     if(buffer_ma_wb.read_rd() == 0)return;//x0
     r.write_reg(buffer_ma_wb.read_rd_value(),buffer_ma_wb.read_rd());
-
-    ///unlock
-    r.unlock_reg(buffer_ma_wb.read_rd());
+    buffer_ma_wb.send_rd_value(buffer_id_ex);///
 }
 
 void Parallel_Ctrler::Run_Parallel(){
@@ -291,6 +316,131 @@ void Parallel_Ctrler::Run_Parallel(){
                 isready[1] = true;
         }
     }
-};
+}
+
+void Parallel_Ctrler::Run_Forwarding(){
+    while(1){
+        //WB
+        if(isready[4]){
+            Fstep_WriteBack();
+            isready[4] = false;
+            /*if(!isready[3]&&!isready[2]&&!isready[1]) {
+                if (buffer_if_id.read_hazard() == BOTH) {
+                    isready[1] = true;
+                    buffer_if_id.modify_hazard(CONTROL);
+                } else if (buffer_if_id.read_hazard() == DATA) {
+                    buffer_if_id.modify_hazard(NON);
+                    isready[1] = true;
+                }
+            }*/
+#ifdef REG_LOCKER
+            r.debug();
+#endif
+        }
+        //MA
+        if(isready[3]){
+            Fstep_MemoryAccess();
+            isready[3] = false;
+            isready[4] = true;
+        }
+        //EX
+        if(isready[2]){
+            try {
+                Fstep_excute();
+            }
+            catch (terminate) {
+                Fstep_WriteBack();
+                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
+                delete m;
+                return ;
+            }
+            if(buffer_id_ex.read_hazard() == CONTROL){
+                buffer_if_id.modify_PC(buffer_ex_ma.read_PC());//MUX_GREEN写到这一步里了
+                buffer_if_id.modify_hazard(NON);
+            }
+            isready[2] = false;
+            isready[3] = true;
+        }
+        //ID
+        ///这个步骤中使用了寄存器，进行上锁操作
+        if(isready[1]){
+            Fstep_Decode();
+            isready[1] = false;
+            isready[2] = true;
+        }
+        //IF
+        ///原本这里不能接触register,但是为了方便给rd上锁，所以在FStep_Fetch（）对寄存器做了上锁的操作。
+        ///该处Step_Fetch也对hazard做修改操作。
+        if(buffer_if_id.read_hazard() == NON){
+            FStep_Fetch();
+            isready[1] = true;
+        }
+    }
+}
+
+/*void Parallel_Ctrler::FStep_Fetch(){
+    Ins_Base *tmpbp = nullptr;
+
+    unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
+    unsigned int op = (inst_content&0x7f);
+
+    fetch_sw(tmpbp,op,inst_content);
+
+    buffer_if_id.modify_bp(tmpbp);
+
+    //判断hazard类型
+    ///这里把细判的版本改成这样的粗略判断。
+     InstT tmpinstt = tmpbp->instt;
+
+    if(tmpinstt == Command_family){
+        if(r.isreglocked(tmpbp->rs1)||r.isreglocked(tmpbp->rs2))
+            buffer_if_id.modify_hazard(BOTH);
+        else buffer_if_id.modify_hazard(CONTROL);
+    }
+    if(tmpinstt == JALR){
+        if(r.isreglocked(tmpbp->rs1))buffer_if_id.modify_hazard(BOTH);
+        else buffer_if_id.modify_hazard(CONTROL);
+    }
+
+    if((tmpinstt == Store_family||op == 0b0110011)
+       &&r.isreglocked(tmpbp->rs2)){
+        buffer_if_id.modify_hazard(DATA);
+    }else if((tmpinstt != LUI&&tmpinstt != AUIPC&&tmpinstt != JAL&&tmpinstt != Command_family&&tmpinstt != JALR)
+       &&r.isreglocked(tmpbp->rs1))
+        buffer_if_id.modify_hazard(DATA);
+
+    //上锁
+    buffer_if_id.modify_Locknext(false);
+    if(tmpbp->instt != Command_family&&tmpbp->instt != Store_family){
+        if(tmpbp->rd != tmpbp->rs1&&tmpbp->rd != tmpbp->rs2)r.lock_reg(tmpbp->rd);
+        else buffer_if_id.modify_Locknext(true);
+    }
+
+    if(tmpinstt != JAL)buffer_if_id.jumpcommon_PC(4);
+    else buffer_if_id.jumpcommon_PC(tmpbp->imm);
+}
+
+ void Parallel_Ctrler::Fstep_Decode(){
+    Ins_Base* bp = buffer_if_id.read_bp();
+    bp->Decode(r,buffer_if_id,buffer_id_ex);
+    buffer_id_ex.modify_hazard(buffer_if_id.read_hazard());
+    buffer_id_ex.modify_rs1(bp->rs1);
+    buffer_id_ex.modify_rs2(bp->rs2);
+
+    if(buffer_if_id.read_Locknext())r.lock_reg(buffer_id_ex.read_rd());
+}
 
 
+void Parallel_Ctrler::Fstep_WriteBack(){
+    int tmptype = static_cast<int>(buffer_ma_wb.read_instt());
+    if(tmptype < 20&&tmptype >= 10)///STORE
+        return;
+    if(tmptype >= 60&&tmptype < 70)///BRANCH
+        return;
+
+    if(buffer_ma_wb.read_rd() == 0)return;//x0
+    r.write_reg(buffer_ma_wb.read_rd_value(),buffer_ma_wb.read_rd());
+
+    ///unlock
+    r.unlock_reg(buffer_ma_wb.read_rd());
+}*/

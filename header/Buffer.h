@@ -8,15 +8,16 @@
 #include "Instruction.h"
 
 enum HazardT {
-    NON = 0,DATA,CONTROL,BOTH,
+    NON = 0,CONTROL,
+    DATA,DATA_rs1,DATA_rs2,DATA_both,
+    BOTH,BOTH_rs1,BOTH_rs2,BOTH_both,
 };
 class Buffer_IF_ID{
 private:
     Ins_Base* bp;
     int pc;
 
-    HazardT hazard;//n:NON,d:DATA,c:CONTROL,b:both
-    bool Lock_next;
+    HazardT hazard;
 public:
     Buffer_IF_ID();
     ~Buffer_IF_ID();
@@ -31,21 +32,21 @@ public:
     void modify_hazard(HazardT);
     HazardT read_hazard();
 
-    void modify_Locknext(bool);
-    bool read_Locknext();
 };
 
 class Buffer_ID_EX{
 private:
     int pc;
     unsigned rd;
+    unsigned int rs1;
+    unsigned int rs2;
     unsigned int rs1_content;
     unsigned int rs2_content;
     unsigned int imm;
     unsigned int unsigned_imm;
     InstT instt;
 
-    HazardT hazard;//n:NON,d:DATA,c:CONTROL,b:both
+    HazardT hazard;
 public:
     void modify_PC(int xpc);
     int read_PC();
@@ -59,6 +60,10 @@ public:
     unsigned int read_rs2_content();
     void modify_rd(unsigned int x);
     unsigned int read_rd();
+    void modify_rs1(unsigned int x);
+    unsigned int read_rs1();
+    void modify_rs2(unsigned int x);
+    unsigned int read_rs2();
 
     void modify_unsigned_imm(unsigned int x);
     unsigned int read_unsigned_imm();
@@ -78,6 +83,7 @@ private:
     InstT instt;
     int mem_offset;
 
+    HazardT hazard;
 public:
     void modify_PC(int xpc);
     void jumpcommon_PC(int step);
@@ -93,6 +99,24 @@ public:
 
     void modify_mem_offset(int x);
     int read_mem_offset();
+
+    void modify_hazard(HazardT);
+    HazardT read_hazard();
+
+    bool send_rd_value(Buffer_ID_EX& buffer_id_ex){
+        bool flag = false;
+        if(rd == 0)return false;
+        if(rd == buffer_id_ex.read_rs1()){
+            buffer_id_ex.modify_rs1_content(rd_value);
+            flag = true;
+        }
+        if(rd == buffer_id_ex.read_rs2()){
+            buffer_id_ex.modify_rs2_content(rd_value);
+            flag = true;
+        }
+
+        return flag;
+    }
 };
 
 class Buffer_MA_WB{
@@ -101,6 +125,7 @@ private:
     unsigned int rd;
     InstT instt;
 
+    HazardT hazard;
 public:
     void modify_rd_value(unsigned int x);
     unsigned int read_rd_value();
@@ -110,5 +135,22 @@ public:
     void modify_instt(InstT xinstt);
     InstT read_instt();
 
+    void modify_hazard(HazardT);
+    HazardT read_hazard();
+
+    bool send_rd_value(Buffer_ID_EX& buffer_id_ex){
+        bool flag = false;
+        if(rd == 0)return false;
+        if(rd == buffer_id_ex.read_rs1()){
+            buffer_id_ex.modify_rs1_content(rd_value);
+            flag = true;
+        }
+        if(rd == buffer_id_ex.read_rs2()){
+            buffer_id_ex.modify_rs2_content(rd_value);
+            flag = true;
+        }
+
+        return flag;
+    }
 };
 #endif //RISCV_SIMULATOR_BUFFER_H

@@ -6,7 +6,8 @@
 #define RISCV_SIMULATOR_PARALLEL_H
 
 #include "ALU.h"
-
+//#define PC_WATCH
+//#define DEBUG_FOWARDING
 class Parallel_Ctrler{
 private:
     memory *m;
@@ -32,6 +33,8 @@ public:
     ~Parallel_Ctrler();
 
     void Run_Parallel();
+
+    void Run_Forwarding();
 };
 
 #endif //RISCV_SIMULATOR_PARALLEL_H
