@@ -9,8 +9,6 @@
 
 enum HazardT {
     NON = 0,CONTROL,
-    DATA,DATA_rs1,DATA_rs2,DATA_both,
-    BOTH,BOTH_rs1,BOTH_rs2,BOTH_both,
 };
 class Buffer_IF_ID{
 private:
@@ -83,7 +81,6 @@ private:
     InstT instt;
     int mem_offset;
 
-    HazardT hazard;
 public:
     void modify_PC(int xpc);
     void jumpcommon_PC(int step);
@@ -100,23 +97,7 @@ public:
     void modify_mem_offset(int x);
     int read_mem_offset();
 
-    void modify_hazard(HazardT);
-    HazardT read_hazard();
-
-    bool send_rd_value(Buffer_ID_EX& buffer_id_ex){
-        bool flag = false;
-        if(rd == 0)return false;
-        if(rd == buffer_id_ex.read_rs1()){
-            buffer_id_ex.modify_rs1_content(rd_value);
-            flag = true;
-        }
-        if(rd == buffer_id_ex.read_rs2()){
-            buffer_id_ex.modify_rs2_content(rd_value);
-            flag = true;
-        }
-
-        return flag;
-    }
+    void send_rd_value(Buffer_ID_EX& buffer_id_ex);
 };
 
 class Buffer_MA_WB{
@@ -125,7 +106,6 @@ private:
     unsigned int rd;
     InstT instt;
 
-    HazardT hazard;
 public:
     void modify_rd_value(unsigned int x);
     unsigned int read_rd_value();
@@ -135,22 +115,6 @@ public:
     void modify_instt(InstT xinstt);
     InstT read_instt();
 
-    void modify_hazard(HazardT);
-    HazardT read_hazard();
-
-    bool send_rd_value(Buffer_ID_EX& buffer_id_ex){
-        bool flag = false;
-        if(rd == 0)return false;
-        if(rd == buffer_id_ex.read_rs1()){
-            buffer_id_ex.modify_rs1_content(rd_value);
-            flag = true;
-        }
-        if(rd == buffer_id_ex.read_rs2()){
-            buffer_id_ex.modify_rs2_content(rd_value);
-            flag = true;
-        }
-
-        return flag;
-    }
+    void send_rd_value(Buffer_ID_EX& buffer_id_ex);
 };
 #endif //RISCV_SIMULATOR_BUFFER_H

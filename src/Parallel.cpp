@@ -15,14 +15,8 @@ Parallel_Ctrler::~Parallel_Ctrler(){
 
 void Parallel_Ctrler::FStep_Fetch(){
     Ins_Base *tmpbp = nullptr;
-
-#ifdef PC_WATCH
-    int tmppc = buffer_if_id.read_PC();
-    unsigned int inst_content = m->get_inst(tmppc);
-    std::cout << "IN FETCH. NOW the PC is: " << std::hex <<tmppc << std::endl;
-#else
     unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
-#endif
+
     unsigned int op = (inst_content&0x7f);
 
     fetch_sw(tmpbp,op,inst_content);
@@ -197,7 +191,7 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
 
     int tmptype = static_cast<int>(buffer_ex_ma.read_instt());
 
-    if(tmptype >= 20&&!(tmptype >= 60&&tmptype < 70))///
+    if(tmptype >= 20&&!(tmptype >= 60&&tmptype < 70))///Forwarding
         buffer_ex_ma.send_rd_value(buffer_id_ex);
     ///LOAD
     if(tmptype < 10){
@@ -207,28 +201,28 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),1);
                 tmprd = ((tmprd>>7) == 1?(tmprd|0xffffff00):tmprd);
                 buffer_ma_wb.modify_rd_value(tmprd);
-                buffer_ma_wb.send_rd_value(buffer_id_ex);///
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
                 break;
             case LH:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),2);
                 tmprd = ((tmprd>>15) == 1?(tmprd|0xffff0000):tmprd);
                 buffer_ma_wb.modify_rd_value(tmprd);
-                buffer_ma_wb.send_rd_value(buffer_id_ex);///
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
                 break;
             case LW:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),4);
                 buffer_ma_wb.modify_rd_value(tmprd);
-                buffer_ma_wb.send_rd_value(buffer_id_ex);///
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
                 break;
             case LBU:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),1);
                 buffer_ma_wb.modify_rd_value(tmprd&0xff);
-                buffer_ma_wb.send_rd_value(buffer_id_ex);///
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
                 break;
             case LHU:
                 tmprd = m->read_content(buffer_ex_ma.read_mem_offset(),2);
                 buffer_ma_wb.modify_rd_value(tmprd&0xffff);
-                buffer_ma_wb.send_rd_value(buffer_id_ex);///
+                buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
                 break;
             default:throw exception::MA_InvalidLoad();
         }
@@ -256,66 +250,7 @@ void Parallel_Ctrler::Fstep_WriteBack(){
 
     if(buffer_ma_wb.read_rd() == 0)return;//x0
     r.write_reg(buffer_ma_wb.read_rd_value(),buffer_ma_wb.read_rd());
-    buffer_ma_wb.send_rd_value(buffer_id_ex);///
-}
-
-void Parallel_Ctrler::Run_Parallel(){
-    while(1){
-        //WB
-        if(isready[4]){
-            Fstep_WriteBack();
-            isready[4] = false;
-
-            if(!isready[3]&&!isready[2]&&!isready[1]) {
-                if (buffer_if_id.read_hazard() == BOTH) {
-                    isready[1] = true;
-                    buffer_if_id.modify_hazard(CONTROL);
-                } else if (buffer_if_id.read_hazard() == DATA) {
-                    buffer_if_id.modify_hazard(NON);
-                    isready[1] = true;
-                }
-            }
-        }
-        //MA
-        if(isready[3]){
-            Fstep_MemoryAccess();
-            isready[3] = false;
-            isready[4] = true;
-        }
-        //EX
-        if(isready[2]){
-            try {
-                Fstep_excute();
-            }
-            catch (terminate) {
-                Fstep_WriteBack();
-                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
-                delete m;
-                return ;
-            }
-            if(buffer_id_ex.read_hazard() == CONTROL){
-                buffer_if_id.modify_PC(buffer_ex_ma.read_PC());//MUX_GREEN写到这一步里了
-                buffer_if_id.modify_hazard(NON);
-            }
-            isready[2] = false;
-            isready[3] = true;
-        }
-        //ID
-        ///这个步骤中使用了寄存器，进行上锁操作
-        if(isready[1]){
-            Fstep_Decode();
-            isready[1] = false;
-            isready[2] = true;
-        }
-        //IF
-        ///原本这里不能接触register,但是为了方便给rd上锁，所以在FStep_Fetch（）对寄存器做了上锁的操作。
-        ///该处Step_Fetch也对hazard做修改操作。
-        if(buffer_if_id.read_hazard() == NON){
-            FStep_Fetch();
-            if(buffer_if_id.read_hazard() == NON||buffer_if_id.read_hazard() == CONTROL)///confirm
-                isready[1] = true;
-        }
-    }
+    buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
 }
 
 void Parallel_Ctrler::Run_Forwarding(){
@@ -324,18 +259,6 @@ void Parallel_Ctrler::Run_Forwarding(){
         if(isready[4]){
             Fstep_WriteBack();
             isready[4] = false;
-            /*if(!isready[3]&&!isready[2]&&!isready[1]) {
-                if (buffer_if_id.read_hazard() == BOTH) {
-                    isready[1] = true;
-                    buffer_if_id.modify_hazard(CONTROL);
-                } else if (buffer_if_id.read_hazard() == DATA) {
-                    buffer_if_id.modify_hazard(NON);
-                    isready[1] = true;
-                }
-            }*/
-#ifdef REG_LOCKER
-            r.debug();
-#endif
         }
         //MA
         if(isready[3]){
@@ -362,15 +285,12 @@ void Parallel_Ctrler::Run_Forwarding(){
             isready[3] = true;
         }
         //ID
-        ///这个步骤中使用了寄存器，进行上锁操作
         if(isready[1]){
             Fstep_Decode();
             isready[1] = false;
             isready[2] = true;
         }
         //IF
-        ///原本这里不能接触register,但是为了方便给rd上锁，所以在FStep_Fetch（）对寄存器做了上锁的操作。
-        ///该处Step_Fetch也对hazard做修改操作。
         if(buffer_if_id.read_hazard() == NON){
             FStep_Fetch();
             isready[1] = true;
