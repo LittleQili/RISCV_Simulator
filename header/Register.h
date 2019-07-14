@@ -5,7 +5,7 @@
 #ifndef RISCV_SIMULATOR_REGISTER_H
 #define RISCV_SIMULATOR_REGISTER_H
 
-#include "Memory.h"
+#include "exception.h"
 
 class Register{
 private:
