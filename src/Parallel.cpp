@@ -51,8 +51,11 @@ void Parallel_Ctrler::FStep_Fetch(){
         else buffer_if_id.modify_Locknext(true);
     }
 
-    if(tmpinstt != JAL)buffer_if_id.jumpcommon_PC(4);
-    else buffer_if_id.jumpcommon_PC(tmpbp->imm);
+    if(tmpinstt == JAL){
+        buffer_if_id.jumpcommon_PC(tmpbp->imm);
+    }else if(tmpinstt == AUIPC){
+        buffer_if_id.jumpcommon_PC(tmpbp->unsigned_imm);
+    }else buffer_if_id.jumpcommon_PC(4);
 }
 ///这里留住了后几个指令类型的家族分类操作。不知道后面有用否？
 ///repaly 2019/7/14:非常有用，减少了判断hazard类型的时间。
@@ -159,7 +162,6 @@ void Parallel_Ctrler::Fstep_excute(){
             if(tmptype < 70)buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
             else{
                 if(tmptype == AUIPC){///AUIPC
-                    buffer_ex_ma.jumpcommon_PC(exe.AUIPC() - 4);
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                 }else if(tmptype == JAL){///JAL
                     buffer_ex_ma.modify_rd_value(buffer_ex_ma.read_PC() - buffer_id_ex.read_imm() + 4);
