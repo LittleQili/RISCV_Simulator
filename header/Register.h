@@ -7,7 +7,9 @@
 
 #include "Memory.h"
 
-#define REG_LOCKER
+///发现了寄存器上锁问题：
+///由于存在a = a + 4类似的问题，在执行本条语句的时候
+//#define REG_LOCKER
 class Register{
 private:
     unsigned int reg[32];

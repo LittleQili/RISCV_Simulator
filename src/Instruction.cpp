@@ -4,7 +4,7 @@
 
 #include "../header/Instruction.h"
 
-Ins_Base::Ins_Base():instt(UnDecoded){};
+Ins_Base::Ins_Base():instt(UnDecoded),rs1(32),rs2(32){};
 
 Ins_R::Ins_R() {};
 

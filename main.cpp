@@ -1,5 +1,5 @@
-#include "header/Pipeline.h"
-
+#include "header/Parallel.h"
+/*
 void test_newbuffer(){
     memory *m = new memory;
     m->inimem();
@@ -28,7 +28,9 @@ void test_newbuffer(){
         //WB
         Fstep_WriteBack(buffer_ma_wb, r);
     }
-}
+}*/
 int main() {
-    test_newbuffer();
+    //test_newbuffer();
+    Parallel_Ctrler parallel_ctrler;
+    parallel_ctrler.Run_Parallel();
 }

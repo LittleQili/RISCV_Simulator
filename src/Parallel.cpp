@@ -4,7 +4,7 @@
 
 #include "../header/Parallel.h"
 
-Parallel_Ctrler::Parallel_Ctrler():isIFlocked(false),hazard('n'){
+Parallel_Ctrler::Parallel_Ctrler():isIFlocked(false){
     m = new memory;
     m->inimem();
     for(int i = 0;i < 5;++i) isready[i] = false;
@@ -15,30 +15,53 @@ Parallel_Ctrler::~Parallel_Ctrler(){
 
 void Parallel_Ctrler::FStep_Fetch(){
     Ins_Base *tmpbp = nullptr;
+#ifdef PC_WATCH
+    int tmppc = buffer_if_id.read_PC();
+    unsigned int inst_content = m->get_inst(tmppc);
+    std::cout << "IN FETCH. NOW the PC is: " << std::hex <<tmppc << std::endl;
+#else
     unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
+#endif
     unsigned int op = (inst_content&0x7f);
 
     fetch_sw(tmpbp,op,inst_content);
 
     buffer_if_id.modify_bp(tmpbp);
-    //上锁
-    if(tmpbp->instt != Command_family&&tmpbp->instt != Store_family)
-        r.lock_reg(tmpbp->rd);
 
     //判断hazard类型
     /**这里判断的时候先判断control，因为有可能同时具备两种
      * 判断data的时候用了短路求值的思路。之后再加两种功能的时候应该小心为上。
      */
-    if(tmpbp->instt == Command_family||tmpbp->instt == JALR) hazard = 'c';
-    if((tmpbp->instt == Command_family||tmpbp->instt == Store_family||op == 0b0110011)
+     InstT tmpinstt = tmpbp->instt;
+    if(tmpinstt == Command_family){
+        if(r.isreglocked(tmpbp->rs1)){
+            if(r.isreglocked(tmpbp->rs2))buffer_if_id.modify_hazard(BOTH_both);
+            else buffer_if_id.modify_hazard(BOTH_rs1);
+        }else if(r.isreglocked(tmpbp->rs2))
+            buffer_if_id.modify_hazard(BOTH_rs2);
+        else buffer_if_id.modify_hazard(CONTROL);
+    }
+    if(tmpinstt == JALR){
+        if(r.isreglocked(tmpbp->rs1))buffer_if_id.modify_hazard(BOTH_rs1);
+        else buffer_if_id.modify_hazard(CONTROL);
+    }
+    if((tmpinstt == Store_family||op == 0b0110011)
        &&r.isreglocked(tmpbp->rs2)){
-        if(hazard == 'c')hazard = 'b';
-        else hazard = 'd';
-    }else if((tmpbp->instt != LUI&&tmpbp->instt != AUIPC&&tmpbp->instt != JAL)
+        buffer_if_id.modify_hazard(DATA_rs2);
+    }else if((tmpinstt != LUI&&tmpinstt != AUIPC&&tmpinstt != JAL&&tmpinstt != Command_family&&tmpinstt != JALR)
        &&r.isreglocked(tmpbp->rs1))
-        hazard = 'd';
+        if(buffer_if_id.read_hazard() == DATA_rs2)buffer_if_id.modify_hazard(DATA_both);
+        else buffer_if_id.modify_hazard(DATA_rs1);
 
-    buffer_if_id.jumpcommon_PC(4);
+    //上锁
+    buffer_if_id.modify_Locknext(false);
+    if(tmpbp->instt != Command_family&&tmpbp->instt != Store_family){
+        if(tmpbp->rd != tmpbp->rs1&&tmpbp->rd != tmpbp->rs2)r.lock_reg(tmpbp->rd);
+        else buffer_if_id.modify_Locknext(true);
+    }
+
+    if(tmpinstt != JAL)buffer_if_id.jumpcommon_PC(4);
+    else buffer_if_id.jumpcommon_PC(tmpbp->imm);
 }
 ///这里留住了后几个指令类型的家族分类操作。不知道后面有用否？
 void Parallel_Ctrler::fetch_sw(Ins_Base* &bp, const unsigned int& op,const unsigned int& inst_content){
@@ -110,6 +133,9 @@ void Parallel_Ctrler::fetch_sw(Ins_Base* &bp, const unsigned int& op,const unsig
 void Parallel_Ctrler::Fstep_Decode(){
     Ins_Base* bp = buffer_if_id.read_bp();
     bp->Decode(r,buffer_if_id,buffer_id_ex);
+    buffer_id_ex.modify_hazard(buffer_if_id.read_hazard());
+
+    if(buffer_if_id.read_Locknext())r.lock_reg(buffer_id_ex.read_rd());
 }
 ///这个步骤中buffer_ex_ma仅有memoffset用到read操作。
 void Parallel_Ctrler::Fstep_excute(){
@@ -117,6 +143,7 @@ void Parallel_Ctrler::Fstep_excute(){
     buffer_ex_ma.modify_rd(buffer_id_ex.read_rd());
     buffer_ex_ma.modify_instt(buffer_id_ex.read_instt());
     buffer_ex_ma.modify_PC(buffer_id_ex.read_PC());
+    //buffer_ex_ma.modify_hazard(buffer_id_ex.read_hazard());
     int tmptype = static_cast<int>(buffer_id_ex.read_instt());
     if(tmptype < 40){
         ///关于L和S的解释：
@@ -143,8 +170,7 @@ void Parallel_Ctrler::Fstep_excute(){
                     buffer_ex_ma.jumpcommon_PC(exe.AUIPC() - 4);
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                 }else if(tmptype == JAL){///JAL
-                    buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
-                    buffer_ex_ma.jumpcommon_PC(exe.JAL() - 4);
+                    buffer_ex_ma.modify_rd_value(buffer_ex_ma.read_PC() - buffer_id_ex.read_imm() + 4);
                 }else if(tmptype == JALR){///JALR
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                     buffer_ex_ma.jumpcommon_PC(exe.JALR() - buffer_id_ex.read_PC());
@@ -157,6 +183,7 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
     buffer_ma_wb.modify_instt(buffer_ex_ma.read_instt());
     buffer_ma_wb.modify_rd(buffer_ex_ma.read_rd());
     buffer_ma_wb.modify_rd_value(buffer_ex_ma.read_rd_value());
+   // buffer_ma_wb.modify_hazard(buffer_ex_ma.read_hazard());
     int tmptype = static_cast<int>(buffer_ex_ma.read_instt());
 ///LOAD
     if(tmptype < 10){
@@ -208,8 +235,11 @@ void Parallel_Ctrler::Fstep_WriteBack(){
     if(tmptype >= 60&&tmptype < 70)///BRANCH
         return;
 
-    if(buffer_ma_wb.read_rd() == 0) return;//x0
+    if(buffer_ma_wb.read_rd() == 0)return;//x0
     r.write_reg(buffer_ma_wb.read_rd_value(),buffer_ma_wb.read_rd());
+
+    ///unlock
+    r.unlock_reg(buffer_ma_wb.read_rd());
 }
 
 

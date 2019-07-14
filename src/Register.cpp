@@ -22,13 +22,13 @@ void Register::write_reg(unsigned int content,int pos){
 }
 
 void Register::lock_reg(int pos){
-    ++locker[pos];
+    if(pos != 0)++locker[pos];
 #ifdef REG_LOCKER
     std::cout << "Register " << pos << " is locked to level: "<< locker[pos] << std::endl;
 #endif
 }
 void Register::unlock_reg(int pos){
-    --locker[pos];
+    if(pos != 0)--locker[pos];
 #ifdef REG_LOCKER
     std::cout << "Register " << pos << " is unlocked to level: "<< locker[pos] << std::endl;
 #endif
