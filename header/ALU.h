@@ -31,7 +31,6 @@ public:
     unsigned int SHIFTer();
     unsigned int COMPer();
     int BRANCHer();
-    int JAL();
     int JALR();
     int AUIPC();
 };

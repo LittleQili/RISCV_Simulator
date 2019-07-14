@@ -2,7 +2,7 @@
 // Created by anna_Diao on 2019/7/10.
 //
 
-#include "../../header/Pipeline.h"
+#include "../../header/Parallel.h"
 
 void Ins_R::Fetch(const unsigned int& inst_content){
     Ins_Base::getfunct7(funct7,inst_content);

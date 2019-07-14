@@ -2,7 +2,7 @@
 // Created by anna_Diao on 2019/7/10.
 //
 
-#include "../../header/Pipeline.h"
+#include "../../header/Parallel.h"
 
 void Ins_R::Decode(Register& r,Buffer_IF_ID& buffer_if_id,Buffer_ID_EX& buffer_id_ex){
     buffer_id_ex.modify_rs1_content(r.get_reg(rs1));

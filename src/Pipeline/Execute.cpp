@@ -2,7 +2,7 @@
 // Created by anna_Diao on 2019/7/10.
 //
 
-#include "../../header/Pipeline.h"
+#include "../../header/Parallel.h"
 ALU::ALU(Buffer_ID_EX& buffer_id_ex):
         rs1_content(buffer_id_ex.read_rs1_content()),rs2_content(buffer_id_ex.read_rs2_content()),
         unsigned_imm(buffer_id_ex.read_unsigned_imm()),imm(buffer_id_ex.read_imm()),
@@ -93,9 +93,6 @@ int ALU::BRANCHer(){
     if(instt == BLT)return sn1 < sn2?static_cast<int>(imm):4;
     if(instt == BGE)return sn1 >= sn2?static_cast<int>(imm):4;
     throw exception::ALU_InvalidBranch();
-}
-int ALU::JAL(){
-    return static_cast<int>(imm);
 }
 int ALU::JALR(){
     return static_cast<int>((imm+rs1_content)& 0xfffffffe);
