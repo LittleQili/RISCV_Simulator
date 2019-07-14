@@ -13,53 +13,53 @@ memory::~memory() {
 }
 
 void memory::inimem(){
-        char gap;
+    char gap;
 
-        unsigned int changer;
-        int offset = 0;
+    unsigned int changer;
+    int offset = 0;
 
-        unsigned short tmpin = 0;
-        const unsigned short zero = 0;
-        int old = offset;
+    unsigned short tmpin = 0;
+    const unsigned short zero = 0;
+    int old = offset;
 
-        while(std::cin.get(gap)){
-            switch(gap){
-                case '@':
-                    std::cin >>std::hex>> changer;
-                    old = offset;
-                    offset = 0;
-                    offset += static_cast<int>(changer);
-                    for(int i = old;i < offset;++i){
-                        memcpy(mem+i,&zero,sizeof(char));
-                    }
-                    break;
-                case '\n':
-                case ' ':
-                    break;
-                default:
-                    //以下先输入第一个char里面的内容
-                    std::cin >> std::hex >> tmpin;
-                    if(gap <='9'&&gap>='0'){
-                        tmpin += (gap - '0') * 16;
-                    }else if(gap <='F'&&gap >= 'A'){
-                        tmpin += (gap - 'A' + 10) * 16;
-                    }else if(gap <='f'&&gap >= 'a'){
-                        tmpin += (gap - 'a' + 10) * 16;
-                    }else throw exception::Memory_invalid_input();
-                    memcpy(mem+offset,&tmpin, sizeof(char));
+    while(std::cin.get(gap)){
+        switch(gap){
+            case '@':
+                std::cin >>std::hex>> changer;
+                old = offset;
+                offset = 0;
+                offset += static_cast<int>(changer);
+                for(int i = old;i < offset;++i){
+                    memcpy(mem+i,&zero,sizeof(char));
+                }
+                break;
+            case '\n':
+            case ' ':
+                break;
+            default:
+                //以下先输入第一个char里面的内容
+                std::cin >> std::hex >> tmpin;
+                if(gap <='9'&&gap>='0'){
+                    tmpin += (gap - '0') * 16;
+                }else if(gap <='F'&&gap >= 'A'){
+                    tmpin += (gap - 'A' + 10) * 16;
+                }else if(gap <='f'&&gap >= 'a'){
+                    tmpin += (gap - 'a' + 10) * 16;
+                }else throw exception::Memory_invalid_input();
+                memcpy(mem+offset,&tmpin, sizeof(char));
 
-                    //输入后三个char的内容
-                    std::cin >> std::hex >> tmpin;
-                    memcpy(mem+(++offset),&tmpin, sizeof(char));
-                    std::cin >> std::hex >> tmpin;
-                    memcpy(mem+(++offset),&tmpin, sizeof(char));
-                    std::cin >> std::hex >> tmpin;
-                    memcpy(mem+(++offset),&tmpin, sizeof(char));
-                    ++offset;
-                    break;
-            }
-            //std::cin.get(gap);
+                //输入后三个char的内容
+                std::cin >> std::hex >> tmpin;
+                memcpy(mem+(++offset),&tmpin, sizeof(char));
+                std::cin >> std::hex >> tmpin;
+                memcpy(mem+(++offset),&tmpin, sizeof(char));
+                std::cin >> std::hex >> tmpin;
+                memcpy(mem+(++offset),&tmpin, sizeof(char));
+                ++offset;
+                break;
         }
+        //std::cin.get(gap);
+    }
 }
 
 unsigned int memory::get_inst(int offset){

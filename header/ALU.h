@@ -32,7 +32,6 @@ public:
     unsigned int COMPer();
     int BRANCHer();
     int JALR();
-    int AUIPC();
 };
 
 #endif //RISCV_SIMULATOR_ALU_H

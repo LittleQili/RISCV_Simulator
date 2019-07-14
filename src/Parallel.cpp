@@ -124,38 +124,16 @@ void Parallel_Ctrler::Fstep_excute(){
         ///L:在EX阶段仅仅计算出offset;
         ///S:计算offset，并且将rs2处理掉。
         if(tmptype < 20) {
-#ifdef DEBUG_FOWARDING
-            if(tmptype >= 10)
-            std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
-                      <<" rs2_content = " << buffer_id_ex.read_rs2_content() << std::endl;
-            else
-                std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
-                           << std::endl;
-#endif
             buffer_ex_ma.modify_mem_offset(exe.LOAD_STORE_offset());///???
             if(tmptype >= 10)buffer_ex_ma.modify_rd_value(exe.STOREr());
             if((tmptype >= 10)&&buffer_ex_ma.read_mem_offset() == (int)0x30004) throw terminate();
         }
         else{
-#ifdef DEBUG_FOWARDING
-            if(tmptype >= 20&&tmptype < 23||tmptype>=30 && tmptype < 34)
-                std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
-                          << std::endl;
-            else std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
-                           <<" rs2_content = " << buffer_id_ex.read_rs2_content() << std::endl;
-#endif
             if(tmptype < 30)buffer_ex_ma.modify_rd_value(exe.ARITHer());
             else buffer_ex_ma.modify_rd_value(exe.LOGICer());
         }
     }else{
         if(tmptype < 60){
-#ifdef DEBUG_FOWARDING
-            if(tmptype >= 40&&tmptype < 44||tmptype>=50 && tmptype < 53)
-                std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
-                          << std::endl;
-            else std::cout << "rs1_content = " << buffer_id_ex.read_rs1_content()
-                           <<" rs2_content = " << buffer_id_ex.read_rs2_content() << std::endl;
-#endif
             if(tmptype < 50)buffer_ex_ma.modify_rd_value(exe.SHIFTer());
             else buffer_ex_ma.modify_rd_value(exe.COMPer());
         }
@@ -163,20 +141,10 @@ void Parallel_Ctrler::Fstep_excute(){
             if(tmptype < 70)buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
             else{
                 if(tmptype == AUIPC){///AUIPC
-#ifdef DEBUG_FOWARDING
-               std::cout << "AUIPC" << std::endl;
-#endif
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                 }else if(tmptype == JAL){///JAL
-#ifdef DEBUG_FOWARDING
-                    std::cout << "JAL" << std::endl;
-#endif
                     buffer_ex_ma.modify_rd_value(buffer_ex_ma.read_PC() - buffer_id_ex.read_imm() + 4);
                 }else if(tmptype == JALR){///JALR
-#ifdef DEBUG_FOWARDING
-                    std::cout << "JALR :rs1_content = " << buffer_id_ex.read_rs1_content()
-                              << std::endl;
-#endif
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
                     buffer_ex_ma.jumpcommon_PC(exe.JALR() - buffer_id_ex.read_PC());
                 }
@@ -297,70 +265,3 @@ void Parallel_Ctrler::Run_Forwarding(){
         }
     }
 }
-
-/*void Parallel_Ctrler::FStep_Fetch(){
-    Ins_Base *tmpbp = nullptr;
-
-    unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
-    unsigned int op = (inst_content&0x7f);
-
-    fetch_sw(tmpbp,op,inst_content);
-
-    buffer_if_id.modify_bp(tmpbp);
-
-    //判断hazard类型
-    ///这里把细判的版本改成这样的粗略判断。
-     InstT tmpinstt = tmpbp->instt;
-
-    if(tmpinstt == Command_family){
-        if(r.isreglocked(tmpbp->rs1)||r.isreglocked(tmpbp->rs2))
-            buffer_if_id.modify_hazard(BOTH);
-        else buffer_if_id.modify_hazard(CONTROL);
-    }
-    if(tmpinstt == JALR){
-        if(r.isreglocked(tmpbp->rs1))buffer_if_id.modify_hazard(BOTH);
-        else buffer_if_id.modify_hazard(CONTROL);
-    }
-
-    if((tmpinstt == Store_family||op == 0b0110011)
-       &&r.isreglocked(tmpbp->rs2)){
-        buffer_if_id.modify_hazard(DATA);
-    }else if((tmpinstt != LUI&&tmpinstt != AUIPC&&tmpinstt != JAL&&tmpinstt != Command_family&&tmpinstt != JALR)
-       &&r.isreglocked(tmpbp->rs1))
-        buffer_if_id.modify_hazard(DATA);
-
-    //上锁
-    buffer_if_id.modify_Locknext(false);
-    if(tmpbp->instt != Command_family&&tmpbp->instt != Store_family){
-        if(tmpbp->rd != tmpbp->rs1&&tmpbp->rd != tmpbp->rs2)r.lock_reg(tmpbp->rd);
-        else buffer_if_id.modify_Locknext(true);
-    }
-
-    if(tmpinstt != JAL)buffer_if_id.jumpcommon_PC(4);
-    else buffer_if_id.jumpcommon_PC(tmpbp->imm);
-}
-
- void Parallel_Ctrler::Fstep_Decode(){
-    Ins_Base* bp = buffer_if_id.read_bp();
-    bp->Decode(r,buffer_if_id,buffer_id_ex);
-    buffer_id_ex.modify_hazard(buffer_if_id.read_hazard());
-    buffer_id_ex.modify_rs1(bp->rs1);
-    buffer_id_ex.modify_rs2(bp->rs2);
-
-    if(buffer_if_id.read_Locknext())r.lock_reg(buffer_id_ex.read_rd());
-}
-
-
-void Parallel_Ctrler::Fstep_WriteBack(){
-    int tmptype = static_cast<int>(buffer_ma_wb.read_instt());
-    if(tmptype < 20&&tmptype >= 10)///STORE
-        return;
-    if(tmptype >= 60&&tmptype < 70)///BRANCH
-        return;
-
-    if(buffer_ma_wb.read_rd() == 0)return;//x0
-    r.write_reg(buffer_ma_wb.read_rd_value(),buffer_ma_wb.read_rd());
-
-    ///unlock
-    r.unlock_reg(buffer_ma_wb.read_rd());
-}*/

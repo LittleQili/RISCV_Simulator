@@ -97,8 +97,5 @@ int ALU::BRANCHer(){
 int ALU::JALR(){
     return static_cast<int>((imm+rs1_content)& 0xfffffffe);
 }
-int ALU::AUIPC(){
-    return static_cast<int>(unsigned_imm);
-}
 
 
