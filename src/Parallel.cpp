@@ -135,7 +135,7 @@ void Parallel_Ctrler::Fstep_excute(){
     buffer_ex_ma.modify_rd(buffer_id_ex.read_rd());
     buffer_ex_ma.modify_instt(buffer_id_ex.read_instt());
     buffer_ex_ma.modify_PC(buffer_id_ex.read_PC());
-    //buffer_ex_ma.modify_hazard(buffer_id_ex.read_hazard());
+
     int tmptype = static_cast<int>(buffer_id_ex.read_instt());
     if(tmptype < 40){
         ///关于L和S的解释：
@@ -175,7 +175,7 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
     buffer_ma_wb.modify_instt(buffer_ex_ma.read_instt());
     buffer_ma_wb.modify_rd(buffer_ex_ma.read_rd());
     buffer_ma_wb.modify_rd_value(buffer_ex_ma.read_rd_value());
-   // buffer_ma_wb.modify_hazard(buffer_ex_ma.read_hazard());
+
     int tmptype = static_cast<int>(buffer_ex_ma.read_instt());
 ///LOAD
     if(tmptype < 10){
@@ -263,7 +263,7 @@ void Parallel_Ctrler::Run_Parallel(){
                 Fstep_excute();
             }
             catch (terminate) {
-                //Fstep_WriteBack();
+                Fstep_WriteBack();
                 std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
                 delete m;
                 return ;

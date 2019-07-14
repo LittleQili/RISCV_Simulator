@@ -78,7 +78,6 @@ private:
     InstT instt;
     int mem_offset;
 
-    HazardT hazard;//n:NON,d:DATA,c:CONTROL,b:both
 public:
     void modify_PC(int xpc);
     void jumpcommon_PC(int step);
@@ -94,9 +93,6 @@ public:
 
     void modify_mem_offset(int x);
     int read_mem_offset();
-
-    void modify_hazard(HazardT);
-    HazardT read_hazard();
 };
 
 class Buffer_MA_WB{
@@ -105,7 +101,6 @@ private:
     unsigned int rd;
     InstT instt;
 
-    HazardT hazard;//n:NON,d:DATA,c:CONTROL,b:both
 public:
     void modify_rd_value(unsigned int x);
     unsigned int read_rd_value();
@@ -115,7 +110,5 @@ public:
     void modify_instt(InstT xinstt);
     InstT read_instt();
 
-    void modify_hazard(HazardT);
-    HazardT read_hazard();
 };
 #endif //RISCV_SIMULATOR_BUFFER_H

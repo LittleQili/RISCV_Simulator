@@ -49,8 +49,6 @@ void Buffer_EX_MA::modify_instt(InstT xinstt){instt = xinstt;}
 InstT Buffer_EX_MA::read_instt(){return instt;}
 void Buffer_EX_MA::modify_mem_offset(int x){mem_offset = x;}
 int Buffer_EX_MA::read_mem_offset(){return mem_offset;}
-void Buffer_EX_MA::modify_hazard(HazardT x){hazard = x;}
-HazardT Buffer_EX_MA::read_hazard(){return hazard;}
 
 void Buffer_MA_WB::modify_rd_value(unsigned int x){rd_value = x;}
 unsigned int Buffer_MA_WB::read_rd_value(){ return rd_value;}
@@ -58,5 +56,3 @@ void Buffer_MA_WB::modify_rd(unsigned int x){rd = x;}
 unsigned int Buffer_MA_WB::read_rd(){ return rd;}
 void Buffer_MA_WB::modify_instt(InstT xinstt){instt = xinstt;}
 InstT Buffer_MA_WB::read_instt(){return instt;}
-void Buffer_MA_WB::modify_hazard(HazardT x){hazard = x;}
-HazardT Buffer_MA_WB::read_hazard(){return hazard;}

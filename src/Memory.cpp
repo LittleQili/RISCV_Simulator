@@ -58,7 +58,7 @@ void memory::inimem(){
                     ++offset;
                     break;
             }
-           // std::cin.get(gap);
+            //std::cin.get(gap);
         }
 }
 
