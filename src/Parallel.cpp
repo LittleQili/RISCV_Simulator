@@ -265,3 +265,49 @@ void Parallel_Ctrler::Run_Forwarding(){
         }
     }
 }
+
+void Parallel_Ctrler::Run_Prediction(){
+    while(1){
+        //WB
+        if(isready[4]){
+            Fstep_WriteBack();
+            isready[4] = false;
+        }
+        //MA
+        if(isready[3]){
+            Fstep_MemoryAccess();
+            isready[3] = false;
+            isready[4] = true;
+        }
+        //EX
+        if(isready[2]){
+            try {
+                Fstep_excute();
+            }
+            catch (terminate) {
+                Fstep_WriteBack();
+                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
+                delete m;
+                return ;
+            }
+            if(buffer_id_ex.read_hazard() == CONTROL){
+                ///判断预测是否正确
+
+                buffer_if_id.modify_hazard(NON);
+            }
+            isready[2] = false;
+            isready[3] = true;
+        }
+        //ID
+        if(isready[1]){
+            Fstep_Decode();
+            isready[1] = false;
+            isready[2] = true;
+        }
+        //IF
+        if(buffer_if_id.read_hazard() == NON){
+            FStep_Fetch();
+            isready[1] = true;
+        }
+    }
+}

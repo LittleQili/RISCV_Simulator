@@ -1,0 +1,3 @@
+F:/term2/PPCA/code/RISCV_Simulator/cmake-build-debug/CMakeFiles/RISCV_Simulator.dir
+F:/term2/PPCA/code/RISCV_Simulator/cmake-build-debug/CMakeFiles/edit_cache.dir
+F:/term2/PPCA/code/RISCV_Simulator/cmake-build-debug/CMakeFiles/rebuild_cache.dir
