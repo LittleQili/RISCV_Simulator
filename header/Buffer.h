@@ -23,18 +23,18 @@ public:
     Buffer_IF_ID();
     ~Buffer_IF_ID();
 
-    inline void modify_bp(Ins_Base* xbp);
-    inline Ins_Base* read_bp();
+    void modify_bp(Ins_Base* xbp);
+    Ins_Base* read_bp();
 
-    inline int read_PC();
-    inline void jumpcommon_PC(int step);
-    inline void modify_PC(int xpc);
+    int read_PC();
+    void jumpcommon_PC(int step);
+    void modify_PC(int xpc);
 
-    inline int read_pc_beforeIF();
-    inline void modify_pc_beforeIF(int);
+    int read_pc_beforeIF();
+    void modify_pc_beforeIF(int);
 
-    inline void modify_hazard(HazardT);
-    inline HazardT read_hazard();
+    void modify_hazard(HazardT);
+    HazardT read_hazard();
 };
 
 class Buffer_ID_EX{
@@ -54,35 +54,35 @@ private:
     int pc_beforeIF;
 
 public:
-    inline void modify_PC(int xpc);
-    inline int read_PC();
+    void modify_PC(int xpc);
+    int read_PC();
 
-    inline void modify_instt(InstT xinstt);
-    inline InstT read_instt();
+    void modify_instt(InstT xinstt);
+    InstT read_instt();
 
-    inline void modify_rs1_content(unsigned int x);
-    inline unsigned int read_rs1_content();
-    inline void modify_rs2_content(unsigned int x);
-    inline unsigned int read_rs2_content();
-    inline void modify_rd(unsigned int x);
-    inline unsigned int read_rd();
-    inline void modify_rs1(unsigned int x);
-    inline unsigned int read_rs1();
-    inline void modify_rs2(unsigned int x);
-    inline unsigned int read_rs2();
+    void modify_rs1_content(unsigned int x);
+    unsigned int read_rs1_content();
+    void modify_rs2_content(unsigned int x);
+    unsigned int read_rs2_content();
+    void modify_rd(unsigned int x);
+    unsigned int read_rd();
+    void modify_rs1(unsigned int x);
+    unsigned int read_rs1();
+    void modify_rs2(unsigned int x);
+    unsigned int read_rs2();
 
-    inline void modify_unsigned_imm(unsigned int x);
-    inline unsigned int read_unsigned_imm();
-    inline void modify_imm(unsigned int x);
-    inline unsigned int read_imm();
+    void modify_unsigned_imm(unsigned int x);
+    unsigned int read_unsigned_imm();
+    void modify_imm(unsigned int x);
+    unsigned int read_imm();
 
-    inline void modify_hazard(HazardT);
-    inline HazardT read_hazard();
+    void modify_hazard(HazardT);
+    HazardT read_hazard();
 
-    inline int read_pc_pre();
-    inline void modify_pc_pre(int);
-    inline int read_pc_beforeIF();
-    inline void modify_pc_beforeIF(int);
+    int read_pc_pre();
+    void modify_pc_pre(int);
+    int read_pc_beforeIF();
+    void modify_pc_beforeIF(int);
 };
 
 class Buffer_EX_MA{
@@ -95,22 +95,22 @@ private:
     int mem_offset;
 
 public:
-    inline void modify_PC(int xpc);
-    inline void jumpcommon_PC(int step);
-    inline int read_PC();
-    inline void modify_rd(unsigned int x);
-    inline unsigned int read_rd();
+    void modify_PC(int xpc);
+    void jumpcommon_PC(int step);
+    int read_PC();
+    void modify_rd(unsigned int x);
+    unsigned int read_rd();
 
-    inline void modify_rd_value(unsigned int x);
-    inline unsigned int read_rd_value();
+    void modify_rd_value(unsigned int x);
+    unsigned int read_rd_value();
 
-    inline void modify_instt(InstT xinstt);
-    inline InstT read_instt();
+    void modify_instt(InstT xinstt);
+    InstT read_instt();
 
-    inline void modify_mem_offset(int x);
-    inline int read_mem_offset();
+    void modify_mem_offset(int x);
+    int read_mem_offset();
 
-    inline void send_rd_value(Buffer_ID_EX& buffer_id_ex);
+    void send_rd_value(Buffer_ID_EX& buffer_id_ex);
 };
 
 class Buffer_MA_WB{
@@ -119,14 +119,14 @@ private:
     unsigned int rd;
     InstT instt;
 public:
-    inline void modify_rd_value(unsigned int x);
-    inline unsigned int read_rd_value();
-    inline void modify_rd(unsigned int x);
-    inline unsigned int read_rd();
+    void modify_rd_value(unsigned int x);
+    unsigned int read_rd_value();
+    void modify_rd(unsigned int x);
+    unsigned int read_rd();
 
-    inline void modify_instt(InstT xinstt);
-    inline InstT read_instt();
+    void modify_instt(InstT xinstt);
+    InstT read_instt();
 
-    inline void send_rd_value(Buffer_ID_EX& buffer_id_ex);
+    void send_rd_value(Buffer_ID_EX& buffer_id_ex);
 };
 #endif //RISCV_SIMULATOR_BUFFER_H
