@@ -15,7 +15,9 @@ Parallel_Ctrler::~Parallel_Ctrler(){
 
 void Parallel_Ctrler::FStep_Fetch(){
     Ins_Base *tmpbp = nullptr;
+
     unsigned int inst_content = m->get_inst(buffer_if_id.read_PC());
+    buffer_if_id.modify_pc_beforeIF(buffer_if_id.read_PC());
 
     unsigned int op = (inst_content&0x7f);
 
@@ -26,10 +28,10 @@ void Parallel_Ctrler::FStep_Fetch(){
     //判断hazard类型
     ///这里仅能判断：control
     InstT tmpinstt = tmpbp->instt;
-
-    if(tmpinstt == Command_family||tmpinstt == JALR)
-        buffer_if_id.modify_hazard(CONTROL);
-
+    if(tmpinstt == Command_family)buffer_if_id.modify_hazard(CONTROL);
+    else if(tmpinstt == JALR)buffer_if_id.modify_hazard(__JALR);
+    else buffer_if_id.modify_hazard(NON);
+    //pc的跳跳
     if(tmpinstt == JAL){
         buffer_if_id.jumpcommon_PC(tmpbp->imm);
     }else if(tmpinstt == AUIPC){
@@ -37,7 +39,7 @@ void Parallel_Ctrler::FStep_Fetch(){
     }else buffer_if_id.jumpcommon_PC(4);
 }
 ///这里留住了后几个指令类型的家族分类操作。不知道后面有用否？
-///repaly 2019/7/14:非常有用，减少了判断hazard类型的时间。
+///reply 2019/7/14:非常有用，减少了判断hazard类型的时间。
 void Parallel_Ctrler::fetch_sw(Ins_Base* &bp, const unsigned int& op,const unsigned int& inst_content){
     Ins_Base* tmpd = bp;
     bp = nullptr;
@@ -101,13 +103,25 @@ void Parallel_Ctrler::fetch_sw(Ins_Base* &bp, const unsigned int& op,const unsig
             //case :
         default:
             std::cout << "the op is: "<<std::hex <<op << std::endl;
-            throw exception::Finding();
     }
 }
 void Parallel_Ctrler::Fstep_Decode(){
+    buffer_id_ex.modify_PC(buffer_if_id.read_PC());
     Ins_Base* bp = buffer_if_id.read_bp();
-    bp->Decode(r,buffer_if_id,buffer_id_ex);
     buffer_id_ex.modify_hazard(buffer_if_id.read_hazard());
+    buffer_id_ex.modify_pc_beforeIF(buffer_if_id.read_pc_beforeIF());
+
+    ///分支预测在这里！！！！
+    ///放在这里的原因：
+    ///如果直接放在fetch，那之后就不会计算出来正确的pc了。
+    if(buffer_id_ex.read_hazard() == CONTROL){
+        if(predictor.Judge(buffer_id_ex.read_pc_beforeIF())){//jump
+            buffer_if_id.jumpcommon_PC(bp->imm - 4);
+        }
+        buffer_id_ex.modify_pc_pre(buffer_if_id.read_PC());
+    }
+
+    bp->Decode(r,buffer_if_id,buffer_id_ex);
     buffer_id_ex.modify_rs1(bp->rs1);
     buffer_id_ex.modify_rs2(bp->rs2);
 }
@@ -138,7 +152,8 @@ void Parallel_Ctrler::Fstep_excute(){
             else buffer_ex_ma.modify_rd_value(exe.COMPer());
         }
         else{
-            if(tmptype < 70)buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
+            if(tmptype < 70)
+                buffer_ex_ma.jumpcommon_PC(exe.BRANCHer() - 4);
             else{
                 if(tmptype == AUIPC){///AUIPC
                     buffer_ex_ma.modify_rd_value(static_cast<unsigned int>(buffer_ex_ma.read_PC()));
@@ -192,7 +207,7 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
                 buffer_ma_wb.modify_rd_value(tmprd&0xffff);
                 buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
                 break;
-            default:throw exception::MA_InvalidLoad();
+            default:break;
         }
     }else if(tmptype < 20){///STORE
         switch (tmptype){
@@ -205,7 +220,7 @@ void Parallel_Ctrler::Fstep_MemoryAccess(){
             case SB:
                 m->write_content(buffer_ex_ma.read_mem_offset(),1,buffer_ex_ma.read_rd_value());
                 break;
-            default:throw exception::MA_InvalidSTORE();
+            default:break;
         }
     }
 }
@@ -219,51 +234,6 @@ void Parallel_Ctrler::Fstep_WriteBack(){
     if(buffer_ma_wb.read_rd() == 0)return;//x0
     r.write_reg(buffer_ma_wb.read_rd_value(),buffer_ma_wb.read_rd());
     buffer_ma_wb.send_rd_value(buffer_id_ex);///Forwarding
-}
-
-void Parallel_Ctrler::Run_Forwarding(){
-    while(1){
-        //WB
-        if(isready[4]){
-            Fstep_WriteBack();
-            isready[4] = false;
-        }
-        //MA
-        if(isready[3]){
-            Fstep_MemoryAccess();
-            isready[3] = false;
-            isready[4] = true;
-        }
-        //EX
-        if(isready[2]){
-            try {
-                Fstep_excute();
-            }
-            catch (terminate) {
-                Fstep_WriteBack();
-                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
-                delete m;
-                return ;
-            }
-            if(buffer_id_ex.read_hazard() == CONTROL){
-                buffer_if_id.modify_PC(buffer_ex_ma.read_PC());//MUX_GREEN写到这一步里了
-                buffer_if_id.modify_hazard(NON);
-            }
-            isready[2] = false;
-            isready[3] = true;
-        }
-        //ID
-        if(isready[1]){
-            Fstep_Decode();
-            isready[1] = false;
-            isready[2] = true;
-        }
-        //IF
-        if(buffer_if_id.read_hazard() == NON){
-            FStep_Fetch();
-            isready[1] = true;
-        }
-    }
 }
 
 void Parallel_Ctrler::Run_Prediction(){
@@ -286,14 +256,24 @@ void Parallel_Ctrler::Run_Prediction(){
             }
             catch (terminate) {
                 Fstep_WriteBack();
-                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
+                std::cout << std::dec << ((int) r.get_reg(10) & 0XFF) << '\n';
+                predictor.display_result();
                 delete m;
                 return ;
             }
             if(buffer_id_ex.read_hazard() == CONTROL){
                 ///判断预测是否正确
-
+                if(buffer_ex_ma.read_PC() == buffer_id_ex.read_pc_pre())//right
+                    predictor.Writeback_result(buffer_id_ex.read_pc_beforeIF(), true);
+                else{
+                    predictor.Writeback_result(buffer_id_ex.read_pc_beforeIF(), false);
+                    buffer_if_id.modify_PC(buffer_ex_ma.read_PC());
+                    isready[1] = false;
+                    buffer_if_id.modify_hazard(NON);
+                }
+            }else if(buffer_id_ex.read_hazard() == __JALR){
                 buffer_if_id.modify_hazard(NON);
+                buffer_if_id.modify_PC(buffer_ex_ma.read_PC());
             }
             isready[2] = false;
             isready[3] = true;
@@ -305,7 +285,7 @@ void Parallel_Ctrler::Run_Prediction(){
             isready[2] = true;
         }
         //IF
-        if(buffer_if_id.read_hazard() == NON){
+        if(buffer_if_id.read_hazard() == NON||buffer_if_id.read_hazard() == CONTROL){
             FStep_Fetch();
             isready[1] = true;
         }

@@ -45,7 +45,7 @@ void memory::inimem(){
                     tmpin += (gap - 'A' + 10) * 16;
                 }else if(gap <='f'&&gap >= 'a'){
                     tmpin += (gap - 'a' + 10) * 16;
-                }else throw exception::Memory_invalid_input();
+                }
                 memcpy(mem+offset,&tmpin, sizeof(char));
 
                 //输入后三个char的内容

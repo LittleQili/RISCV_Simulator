@@ -27,8 +27,7 @@ unsigned int ALU::ARITHer(){
         case ADDI:return ADDer(rs1_content,imm);
         case ADD:return ADDer(rs1_content,rs2_content);
         case SUB:return SUBer(rs1_content,rs2_content);
-        case LUI:return ADDer(unsigned_imm,0);
-        default:throw exception::ALU_InvalidLogical();
+        default:return ADDer(unsigned_imm,0);
     }
 }
 unsigned int ALU::LOGICer(){
@@ -38,8 +37,7 @@ unsigned int ALU::LOGICer(){
         case AND:return ANDer(rs1_content,rs2_content);
         case ANDI:return ANDer(rs1_content,imm);
         case OR:return ORer(rs1_content,rs2_content);
-        case ORI:return ORer(rs1_content,imm);
-        default:throw exception::ALU_InvalidLogical();
+        default:return ORer(rs1_content,imm);
     }
 }
 unsigned int ALU::SHIFTer(){
@@ -51,8 +49,7 @@ unsigned int ALU::SHIFTer(){
         case SRL:t = rs2_content&0x1f;break;
         case SRLI:t = imm&0x1f;break;
         case SRA:issigned = true;t = rs2_content&0x1f;break;
-        case SRAI:issigned = true;t = imm&0x1f;break;
-        default:throw exception::ALU_InvalidShift();
+        default:issigned = true;t = imm&0x1f;break;
     }
 
     if(isleft)return (rs1_content<<t);
@@ -69,8 +66,7 @@ unsigned int ALU::COMPer(){
         case SLT:issigned = true;break;
         case SLTU:issigned = false;break;
         case SLTI:n2 = imm;issigned = true;break;
-        case SLTIU:n2 = imm;issigned = false;break;
-        default:throw exception::ALU_InvalidComp();
+        default:n2 = imm;issigned = false;break;
     }
     if(issigned){
         int sn1 = static_cast<int>(rs1_content);
@@ -91,8 +87,7 @@ int ALU::BRANCHer(){
 
     int sn1 = static_cast<int>(rs1_content),sn2 = static_cast<int>(rs2_content);
     if(instt == BLT)return sn1 < sn2?static_cast<int>(imm):4;
-    if(instt == BGE)return sn1 >= sn2?static_cast<int>(imm):4;
-    throw exception::ALU_InvalidBranch();
+    else return sn1 >= sn2?static_cast<int>(imm):4;
 }
 int ALU::JALR(){
     return static_cast<int>((imm+rs1_content)& 0xfffffffe);

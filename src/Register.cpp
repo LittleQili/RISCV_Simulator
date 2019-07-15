@@ -9,8 +9,6 @@ Register::Register() {
 }
 
 unsigned int Register::get_reg(int pos)const{
-    if(pos < 0||pos > 31)
-        throw exception::Register_Reg_outofbound();
     return reg[pos];
 }
 

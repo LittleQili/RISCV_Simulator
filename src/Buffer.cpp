@@ -18,6 +18,8 @@ void Buffer_IF_ID::jumpcommon_PC(int step){pc += step;}
 void Buffer_IF_ID::modify_PC(int xpc){pc = xpc;}
 void Buffer_IF_ID::modify_hazard(HazardT x){hazard = x;}
 HazardT Buffer_IF_ID::read_hazard(){return hazard;}
+int Buffer_IF_ID::read_pc_beforeIF(){return pc_beforeIF;}
+void Buffer_IF_ID::modify_pc_beforeIF(int x){pc_beforeIF = x;}
 
 void Buffer_ID_EX::modify_PC(int xpc){pc = xpc;}
 int Buffer_ID_EX::read_PC(){return pc;}
@@ -34,6 +36,11 @@ void Buffer_ID_EX::modify_rs1(unsigned int x){rs1 = x;}
 unsigned int Buffer_ID_EX::read_rs1(){ return rs1;}
 void Buffer_ID_EX::modify_rs2(unsigned int x){rs2 = x;}
 unsigned int Buffer_ID_EX::read_rs2(){ return rs2;}
+
+int Buffer_ID_EX::read_pc_pre(){ return pc_pre;}
+void Buffer_ID_EX::modify_pc_pre(int x){pc_pre = x;}
+int Buffer_ID_EX::read_pc_beforeIF(){return pc_beforeIF;}
+void Buffer_ID_EX::modify_pc_beforeIF(int x){pc_beforeIF = x;}
 
 void Buffer_ID_EX::modify_unsigned_imm(unsigned int x){unsigned_imm = x;}
 unsigned int Buffer_ID_EX::read_unsigned_imm(){return unsigned_imm;}

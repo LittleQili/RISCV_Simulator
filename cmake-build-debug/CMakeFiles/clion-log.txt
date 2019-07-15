@@ -1,4 +1,0 @@
-C:\Users\13683\AppData\Local\JetBrains\Toolbox\apps\CLion\ch-0\183.5429.37\bin\cmake\win\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" F:\term2\PPCA\code\RISCV_Simulator
--- Configuring done
--- Generating done
--- Build files have been written to: F:/term2/PPCA/code/RISCV_Simulator/cmake-build-debug

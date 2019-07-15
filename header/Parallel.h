@@ -6,33 +6,9 @@
 #define RISCV_SIMULATOR_PARALLEL_H
 
 #include "ALU.h"
-#include <vector>
-#include <map>
+#include "Predictor.h"
+
 class Parallel_Ctrler{
-private:
-    class Predictor{
-    private:
-        struct TmpRecord{
-            int pc;
-            long long sum_num;
-            long long success_num;
-            TmpRecord():sum_num(0),success_num(0){};
-        };
-        std::vector<TmpRecord> pre_predictor;
-        std::map<int,bool> predictor;
-        long long branch_all;
-        long long branch_success;
-    public:
-        bool Judge(int pc){
-            if(!predictor.count(pc)){//预处理未完毕
-
-            }else return predictor.find(pc)->second;
-        }
-        void Result(){
-
-        }
-    };
-
 private:
     memory *m;
     Register r;
@@ -43,6 +19,7 @@ private:
     Buffer_MA_WB buffer_ma_wb;
 
     bool isready[5];
+    Predictor predictor;
 
     void fetch_sw(Ins_Base* &, const unsigned int&,const unsigned int&);
     void FStep_Fetch();
@@ -57,7 +34,6 @@ public:
     Parallel_Ctrler();
     ~Parallel_Ctrler();
 
-    void Run_Forwarding();
     void Run_Prediction();
 };
 
