@@ -9,7 +9,7 @@ RISCV32I指令集模拟器，C++语言实现。
 本repo的五个branch分别实现的功能如下：
 
 | Branch | Notes |
-| 
+| --------- | ------------- |
 | [master](https://github.com/LittleQili/RISCV_Simulator/tree/master) | 串行。仅有一个"buffer"，运行效率较高，但不可改成并行，封装效果差 |
 | [standard](https://github.com/LittleQili/RISCV_Simulator/tree/standard) | 串行。将buffer拆成4块，分别存储需要的数据 |
 | [parallel](https://github.com/LittleQili/RISCV_Simulator/tree/parallel) | 并行，给寄存器上锁(IF/ID)，在遇到hazard之后停止于ID之前(Data)IF之前(Control) |
@@ -27,3 +27,4 @@ qsort: 172288/200045 Rate: 86.1246%
 queens : 53052/77116 Rate: 68.7951%
 superloop : 251660/435027 Rate: 57.8493%
 tak : 15160/60639 Rate: 25.0004%
+
