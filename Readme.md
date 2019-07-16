@@ -10,14 +10,17 @@ RISCV32I指令集模拟器，C++语言实现。
 本repo的五个branch分别实现的功能如下：
 
 | Branch | Notes |
-| --------- | ------------- |
+| ----------------- | ------------- |
 | [master](https://github.com/LittleQili/RISCV_Simulator/tree/master) | 串行。仅有一个"buffer"，运行效率较高，但不可改成并行，封装效果差 |
 | [standard](https://github.com/LittleQili/RISCV_Simulator/tree/standard) | 串行。将buffer拆成4块，分别存储需要的数据 |
 | [parallel](https://github.com/LittleQili/RISCV_Simulator/tree/parallel) | 并行，给寄存器上锁(IF/ID)，在遇到hazard之后停止于ID之前(Data)IF之前(Control) |
 | [forwarding](https://github.com/LittleQili/RISCV_Simulator/tree/forwarding) | 并行，在MA结束后(Load)/MA开始前(除Load)，WB阶段进行forwarding,无特殊情况 |
-| [predictor](https://github.com/LittleQili/RISCV_Simulator/tree/predictor) | 并行，根据本条指令的pc进行（naive的）分支预测(意即以本条指令的pc为key值判断是否跳转) |
+| [predictor(default)](https://github.com/LittleQili/RISCV_Simulator/tree/predictor) | 并行，根据本条指令的pc进行（naive的）分支预测(意即以本条指令的pc为key值判断是否跳转) |
 
-分支预测的结果（仅摘取部分测试文件,更新于2019/07/16_13:50）
+
+## Branch : predictor's Notes
+
+### 分支预测的结果（仅摘取部分测试文件,更新于2019/07/16_13:50）
 
 basicopt1 : 119455/155139 Rate: 76.9987%
 
@@ -37,3 +40,8 @@ superloop : 398062/435027 Rate: 91.5028%
 
 tak : 41640/60639 Rate: 68.6687%
 
+### 分支预测实现思路
+
+以本条跳转指令的pc值作为索引，判断是否跳转。
+
+判断的依据：近10次的成功与否。（过于naive...= =）
