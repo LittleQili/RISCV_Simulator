@@ -4,55 +4,50 @@
 
 #include "../header/Predictor.h"
 
-TmpRecord::TmpRecord(int xpc):pc(xpc),sum_num(0),success_num(0){};
-
-Predictor::Predictor():branch_all(0),branch_success(0){};
-
-void Predictor::find_tmprec(int pc,std::vector<TmpRecord>::iterator& it){
-    std::vector<TmpRecord>::iterator endit = pre_predictor.end();
-    while(it != endit)
-        if(it->pc == pc) return;
-        else ++it;
+Record::Record():isjump(true),jump(0),unjump(0){};
+Record& Record::operator=(const Record& other){
+    isjump = other.isjump;
+    jump = other.jump;
+    unjump = other.unjump;
+    recent_record = other.recent_record;
+    return *this;
 }
 
-bool Predictor::Judge(int pc){
-    if(!predictor.count(pc)){//预处理未完毕
-        //在vector中找pc对应的记录
-        std::vector<TmpRecord>::iterator it = pre_predictor.begin();
-        find_tmprec(pc,it);
-        if(it == pre_predictor.end()){//第一次访问到该pc的跳转指令
-            pre_predictor.push_back(TmpRecord(pc));///他又提醒我用empalce_back?????
-        }//非第一次等待修改即可
-        ///这里默认为跳转,可以根据具体测试文件修改
+_Predictor::_Predictor():branch_all(0),branch_success(0){};
+bool _Predictor::Judge(int pc){
+    if(!predictor.count(pc)){
+        predictor.insert(std::pair<int, Record>(pc, Record()));
         return true;
-    }else return predictor.find(pc)->second;
+    }
+    else return predictor.find(pc)->second.isjump;
 }
-
-void Predictor::Writeback_result(int pc,bool isequal){
+void _Predictor::Writeback_result(int pc,bool isequal){
     ++branch_all;
     if(isequal)++branch_success;
+    std::map<int,Record>::iterator it = predictor.find(pc);
+    Record tmpr = it->second;
 
-    if(!predictor.count(pc)){//涉及vector的更正和写回
-        //在vector中找pc对应的记录
-        std::vector<TmpRecord>::iterator it = pre_predictor.begin();
-        find_tmprec(pc,it);
+    if(isequal){
+        tmpr.recent_record.push(tmpr.isjump);
+        if(tmpr.isjump)++tmpr.jump;
+        else ++tmpr.unjump;
+    }else {
+        tmpr.recent_record.push(!tmpr.isjump);
+        if(tmpr.isjump)++tmpr.unjump;
+        else ++tmpr.jump;
+    }
+    //dequeue
+    if(tmpr.recent_record.size() == MAX_guess){
+        if(tmpr.recent_record.front()) --tmpr.jump;
+        else --tmpr.unjump;
+        tmpr.recent_record.pop();
+    }
 
-        if(isequal)++it->success_num;
-        if(it->success_num > MAX_guess/2) {
-            predictor.insert(std::pair<int, bool>(pc, true));
-            pre_predictor.erase(it);
-            return;
-        }
-        ++it->sum_num;
-        if(it->sum_num - it->success_num > MAX_guess/2){
-            predictor.insert(std::pair<int, bool>(pc, false));
-            pre_predictor.erase(it);
-            return;
-        }
-    }//else 仅需将结果记录在总数中。
+    tmpr.isjump = (tmpr.jump >= tmpr.unjump);
+
+    it->second = tmpr;
 }
-
-void Predictor::display_result(){
+void _Predictor::display_result(){
     std::cout << "Branch Predictor's data: \n"
               <<"Total Branch commands' number: " << branch_all << '\n'
               <<"Success Predictions' number: " << branch_success << '\n'

@@ -19,7 +19,7 @@ private:
     Buffer_MA_WB buffer_ma_wb;
 
     bool isready[5];
-    Predictor predictor;
+    _Predictor predictor;
 
     void fetch_sw(Ins_Base* &, const unsigned int&,const unsigned int&);
     void FStep_Fetch();
