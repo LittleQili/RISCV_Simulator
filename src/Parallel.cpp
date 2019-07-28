@@ -242,7 +242,6 @@ void Parallel_Ctrler::Run_Forwarding(){
             catch (terminate) {
                 Fstep_WriteBack();
                 std::cout << std::dec << ((int) r.get_reg(10) & 0XFF);
-                delete m;
                 return ;
             }
             if(buffer_id_ex.read_hazard() == CONTROL){
